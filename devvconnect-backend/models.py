@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from database import Base
 
 class User(Base):
@@ -15,24 +16,29 @@ class User(Base):
 
 class Job(Base):
     __tablename__ = "jobs"
+    
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, index=True)
-    description = Column(String)
-    tech_stack = Column(String)
-    budget = Column(String)
-    timeline = Column(String)
-
-    client_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String, nullable=False)
+    description = Column(Text)
+    budget = Column(Float, nullable=False)
+    tech_stack = Column(String, nullable=True)
+    timeline = Column(String, nullable=True)
+    client_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    is_open = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Add the missing relationships
     client = relationship("User", back_populates="jobs")
     proposals = relationship("Proposal", back_populates="job")
-
+    
 class Proposal(Base):
     __tablename__ = "proposals"
+    
     id = Column(Integer, primary_key=True, index=True)
     hourly_rate = Column(String)
     estimated_timeline = Column(String)
     message = Column(String)
-
+    
     job_id = Column(Integer, ForeignKey("jobs.id"))
     freelancer_id = Column(Integer, ForeignKey("users.id"))
 

@@ -1,7 +1,8 @@
 import { auth } from "../firebaseConfig";
 import axios from "axios";
 
-const BASE_URL = "http://localhost:8000";// Or your actual backend URL
+const API_BASE_URL = "https://your-backend-url.onrailway.app";
+
 
 // Helper to get Firebase token for current user
 async function getToken() {
@@ -41,7 +42,7 @@ export async function fetchCurrentUser() {
   return await res.json();
 }
 
-// Fetch all jobs for browsing (freelancer)
+// Fetch all jobs for browsing (freelancer) - FIXED: Use correct endpoint
 export async function getJobs() {
   const token = await getToken();
 
@@ -54,6 +55,7 @@ export async function getJobs() {
   if (!res.ok) throw new Error("Failed to fetch jobs");
   return await res.json();
 }
+
 
 // Fetch jobs approved for freelancer (job history)
 export async function getApprovedJobs() {
@@ -69,17 +71,16 @@ export async function getApprovedJobs() {
   return await res.json();
 }
 
-// Submit a proposal to apply for a job (freelancer)
-export async function submitProposal(proposalData) {
+// Submit a proposal to apply for a job (freelancer) - FIXED: Use correct endpoint
+export async function submitProposal(jobId) {  // Simplified to just take jobId
   const token = await getToken();
 
-  const res = await fetch(`${BASE_URL}/proposals`, {
+  const res = await fetch(`${BASE_URL}/freelancer/apply/${jobId}`, {  // Use the correct endpoint
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(proposalData),
   });
 
   if (!res.ok) throw new Error("Failed to submit proposal");
@@ -88,8 +89,8 @@ export async function submitProposal(proposalData) {
 
 // Client: post a new job
 export async function postJob(jobData) {
-  const token = await getToken(); // Use the consistent getToken() function
-  const response = await fetch(`${BASE_URL}/jobs`, { // Changed from API_BASE_URL to BASE_URL
+  const token = await getToken();
+  const response = await fetch(`${BASE_URL}/client/jobs`, {  // Use client-specific endpoint
     method: "POST",
     headers: {
       "Content-Type": "application/json",

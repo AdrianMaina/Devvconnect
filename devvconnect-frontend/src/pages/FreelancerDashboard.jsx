@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getJobs, getApprovedJobs } from "../api/api";
+import { getJobs, getApprovedJobs, submitProposal } from "../api/api";  // Added submitProposal import
 import LogoutButton from "../components/LogoutButton";
 
 const FreelancerDashboard = () => {
@@ -8,6 +8,7 @@ const FreelancerDashboard = () => {
   const [approvedJobs, setApprovedJobs] = useState([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(true);
+  const [applying, setApplying] = useState(new Set());  // Track which jobs are being applied to
 
   // Fetch jobs and approved jobs on mount
   useEffect(() => {
@@ -34,17 +35,36 @@ const FreelancerDashboard = () => {
     job.title.toLowerCase().includes(filter.toLowerCase())
   );
 
-  // Apply to job (submit proposal)
+  // Apply to job (submit proposal) - FIXED
   const handleApply = async (jobId) => {
+    if (applying.has(jobId)) return; // Prevent double-clicking
+    
+    setApplying(prev => new Set(prev).add(jobId));
+    
     try {
-      await submitProposal({ job_id: jobId });
+      await submitProposal(jobId);  // Pass jobId directly
       alert("Proposal submitted successfully!");
+      
+      // Optionally refresh the jobs to update the UI
+      const updatedJobs = await getJobs();
+      setJobs(updatedJobs);
     } catch (error) {
       console.error("Failed to submit proposal:", error);
-      alert("Failed to apply for the job.");
+      if (error.message.includes("Already applied")) {
+        alert("You have already applied to this job.");
+      } else if (error.message.includes("Not authorized")) {
+        alert("You must be logged in as a freelancer to apply.");
+      } else {
+        alert("Failed to apply for the job. Please try again.");
+      }
+    } finally {
+      setApplying(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(jobId);
+        return newSet;
+      });
     }
   };
-
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
@@ -102,21 +122,32 @@ const FreelancerDashboard = () => {
                 />
               </div>
               
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {filteredJobs.map((job) => (
-                  <div key={job.id} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-3xl p-6 shadow-lg hover:shadow-indigo-500/20 transition-all">
-                    <h3 className="text-xl font-bold text-white mb-3">{job.title}</h3>
-                    <p className="text-gray-300 mb-4">{job.description}</p>
-                    <p className="text-sm text-indigo-300 mb-4">Budget: ${job.budget}</p>
-                    <button
-                      onClick={() => handleApply(job.id)}
-                      className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-2 rounded-lg font-medium hover:shadow-indigo-500/30 hover:shadow-md transition-all"
-                    >
-                      Apply Now
-                    </button>
-                  </div>
-                ))}
-              </div>
+              {filteredJobs.length === 0 ? (
+                <div className="text-center py-12 bg-white/10 rounded-3xl border border-white/20">
+                  <p className="text-gray-300">No jobs available at the moment.</p>
+                </div>
+              ) : (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredJobs.map((job) => (
+                    <div key={job.id} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-3xl p-6 shadow-lg hover:shadow-indigo-500/20 transition-all">
+                      <h3 className="text-xl font-bold text-white mb-3">{job.title}</h3>
+                      <p className="text-gray-300 mb-4">{job.description}</p>
+                      <p className="text-sm text-indigo-300 mb-4">Budget: ${job.budget}</p>
+                      <button
+                        onClick={() => handleApply(job.id)}
+                        disabled={applying.has(job.id)}
+                        className={`w-full py-2 rounded-lg font-medium transition-all ${
+                          applying.has(job.id)
+                            ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                            : "bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:shadow-indigo-500/30 hover:shadow-md"
+                        }`}
+                      >
+                        {applying.has(job.id) ? "Applying..." : "Apply Now"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-8">
