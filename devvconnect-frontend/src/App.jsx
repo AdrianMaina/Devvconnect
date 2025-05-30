@@ -1,5 +1,6 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast"; // ✅ Import the toaster
 
 import Hero from "./pages/Hero";
 import ClientSignup from "./pages/ClientSignup";
@@ -10,6 +11,8 @@ import FreelancerDashboard from "./pages/FreelancerDashboard";
 
 function App() {
   return (
+    <>
+      <Toaster position="top-center" reverseOrder={false} /> {/* ✅ Add this */}
       <Routes>
         <Route path="/" element={<Hero />} />
         <Route path="/client-signup" element={<ClientSignup />} />
@@ -18,6 +21,7 @@ function App() {
         <Route path="/client-dashboard" element={<ClientDashboard />} />
         <Route path="/freelancer-dashboard" element={<FreelancerDashboard />} />
       </Routes>
+    </>
   );
 }
 
