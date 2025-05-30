@@ -32,3 +32,4 @@ def get_jobs(db: Session = Depends(get_db)):
 @router.get("/some-protected-route")
 def protected_route(current_user: User = Depends(get_current_user)):
     return {"message": f"Hello, {current_user.name}"}
+
