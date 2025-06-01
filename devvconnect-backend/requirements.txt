@@ -3,3 +3,4 @@ uvicorn
 sqlalchemy
 firebase-admin
 python-dotenv
+email-validator
