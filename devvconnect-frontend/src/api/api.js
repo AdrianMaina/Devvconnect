@@ -1,7 +1,7 @@
 import { auth } from "../firebaseConfig"; // Assuming firebaseConfig.js is in the parent directory of api.js
 // If firebaseConfig is elsewhere, adjust the path e.g., import { auth } from "./firebaseConfig";
 
-const API_BASE_URL = "http://localhost:8000"; // Your API base URL
+const API_BASE_URL = import.meta.env.VITE_API_URL; // Your API base URL
 
 // Helper to get Firebase token for current user
 async function getToken() {
