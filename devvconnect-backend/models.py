@@ -27,7 +27,6 @@ class Job(Base):
     is_open = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # Add the missing relationships
     client = relationship("User", back_populates="jobs")
     proposals = relationship("Proposal", back_populates="job")
     
@@ -35,12 +34,13 @@ class Proposal(Base):
     __tablename__ = "proposals"
     
     id = Column(Integer, primary_key=True, index=True)
-    hourly_rate = Column(String)
-    estimated_timeline = Column(String)
-    message = Column(String)
+    hourly_rate = Column(String, nullable=True) # Made nullable as it's not always set in freelancer.py
+    estimated_timeline = Column(String, nullable=True) # Made nullable
+    message = Column(String, nullable=True) # Made nullable
     
     job_id = Column(Integer, ForeignKey("jobs.id"))
-    freelancer_id = Column(Integer, ForeignKey("users.id"))
+    freelancer_id = Column(Integer, ForeignKey("users.id")) # This is the correct field for the user ID
+    status = Column(String, default="pending") # Added status field
 
     job = relationship("Job", back_populates="proposals")
     freelancer = relationship("User", back_populates="proposals")

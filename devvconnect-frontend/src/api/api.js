@@ -179,3 +179,20 @@ export async function getApprovedJobs() {
   }
   return await res.json();
 }
+
+const getIdToken = async () => {
+  const user = auth.currentUser;
+  if (user) {
+    try {
+      console.log("Attempting to get ID token for user:", user.email);
+      const token = await user.getIdToken(true); // Force refresh
+      console.log("Successfully retrieved ID token:", token);
+      return token;
+    } catch (error) {
+      console.error("Error getting/refreshing ID token from Firebase:", error);
+      throw error; // Re-throw the error to be caught by the calling function
+    }
+  }
+  console.error("getIdToken: No user logged in");
+  throw new Error("No user logged in");
+};

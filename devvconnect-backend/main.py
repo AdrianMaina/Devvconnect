@@ -4,6 +4,7 @@ from firebase_auth import verify_token
 from routes import users, jobs, proposals, auth, client, freelancer  # assume you have a freelancer.py router
 from database import Base, engine
 from fastapi.middleware.cors import CORSMiddleware
+import models
 
 Base.metadata.create_all(bind=engine)
 

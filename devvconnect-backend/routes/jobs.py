@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from .auth import get_current_user  # Fixed import path for routes folder
+from .auth import get_current_user # Fixed import path for routes folder
 from models import Job, Proposal, User
-from schemas import JobCreate
+from schemas import JobCreate # Uses the JobCreate from your schemas.py
 from typing import List
 
 router = APIRouter()
@@ -16,8 +16,8 @@ def create_job(job: JobCreate, db: Session = Depends(get_db), current_user: User
         title=job.title,
         description=job.description,
         budget=job.budget,
-        tech_stack=job.tech_stack,
-        timeline=job.timeline,
+        tech_stack=job.tech_stack,  # Will be None if not sent by client
+        timeline=job.timeline,    # Will be None if not sent by client
         client_id=current_user.id
     )
     db.add(new_job)
@@ -32,4 +32,3 @@ def get_jobs(db: Session = Depends(get_db)):
 @router.get("/some-protected-route")
 def protected_route(current_user: User = Depends(get_current_user)):
     return {"message": f"Hello, {current_user.name}"}
-

@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from "react";
 import {
-  getJobs,
   postJob,
   fetchMyJobsWithProposals,
   approveProposal,
 } from "../api/api";
 import LogoutButton from "../components/LogoutButton";
+import { useAuth } from "../context/AuthContext";
 
 const ClientDashboard = () => {
   const [activeTab, setActiveTab] = useState("post");
   const [myJobs, setMyJobs] = useState([]);
   const [jobForm, setJobForm] = useState({ title: "", description: "", budget: "" });
+  const { user } = useAuth();
 
   const handleChange = (e) => {
     setJobForm({ ...jobForm, [e.target.name]: e.target.value });
@@ -23,9 +24,10 @@ const ClientDashboard = () => {
       alert("Job posted!");
       setJobForm({ title: "", description: "", budget: "" });
       setActiveTab("myJobs");
-      fetchJobsData();
+      fetchJobsData(); // Call to fetch data after posting
     } catch (err) {
       console.error("Failed to post job:", err);
+      // Optionally, set an error state here to show to the user
     }
   };
 
@@ -42,7 +44,7 @@ const ClientDashboard = () => {
     try {
       await approveProposal(proposalId);
       alert("Proposal approved!");
-      fetchJobsData();
+      fetchJobsData(); // Re-fetch to update the UI
     } catch (err) {
       console.error("Failed to approve proposal:", err);
     }
@@ -66,29 +68,42 @@ const ClientDashboard = () => {
       <div className="relative z-10 min-h-screen">
         {/* Navigation */}
         <nav className="flex justify-between items-center p-6 backdrop-blur-sm bg-white/5 border-b border-white/10">
-          <div className="flex gap-8">
-            <button
-              className={`text-lg font-semibold px-4 py-2 rounded-xl transition-all ${
-                activeTab === "post"
-                  ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg"
-                  : "text-gray-300 hover:text-white hover:bg-white/10"
-              }`}
-              onClick={() => setActiveTab("post")}
-            >
-              Post Job
-            </button>
-            <button
-              className={`text-lg font-semibold px-4 py-2 rounded-xl transition-all ${
-                activeTab === "myJobs"
-                  ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg"
-                  : "text-gray-300 hover:text-white hover:bg-white/10"
-              }`}
-              onClick={() => setActiveTab("myJobs")}
-            >
-              My Jobs
-            </button>
+          <div className="flex items-center gap-8">
+            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
+              DevConnect
+            </h1>
+            <div className="flex gap-4">
+              <button
+                className={`text-lg font-semibold px-4 py-2 rounded-xl transition-all ${
+                  activeTab === "post"
+                    ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg"
+                    : "text-gray-300 hover:text-white hover:bg-white/10"
+                }`}
+                onClick={() => setActiveTab("post")}
+              >
+                Post Job
+              </button>
+              <button
+                className={`text-lg font-semibold px-4 py-2 rounded-xl transition-all ${
+                  activeTab === "myJobs"
+                    ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg"
+                    : "text-gray-300 hover:text-white hover:bg-white/10"
+                }`}
+                onClick={() => setActiveTab("myJobs")}
+              >
+                My Jobs
+              </button>
+            </div>
           </div>
-          <LogoutButton />
+          {/* User Info and Logout Button */}
+          <div className="flex items-center gap-4">
+            {user && (
+              <span className="text-gray-300 text-sm">
+                {user.email}
+              </span>
+            )}
+            <LogoutButton />
+          </div>
         </nav>
 
         {/* Main Content */}
@@ -150,7 +165,7 @@ const ClientDashboard = () => {
             <div className="space-y-8">
               <h2 className="text-3xl font-bold text-white mb-6">Your Posted Jobs</h2>
               {myJobs.length === 0 ? (
-                <div className="text-center py-12 bg-white/10 rounded-3xl border border-white/20">
+                <div className="text-center py-12 bg-white/10 rounded-3xl border border-white/20 backdrop-blur-sm">
                   <p className="text-gray-300">No jobs posted yet.</p>
                 </div>
               ) : (
@@ -158,7 +173,7 @@ const ClientDashboard = () => {
                   {myJobs.map((job) => (
                     <div key={job.id} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-3xl p-6 shadow-lg hover:shadow-indigo-500/20 transition-all">
                       <h3 className="text-xl font-bold text-white mb-3">{job.title}</h3>
-                      <p className="text-gray-300 mb-4">{job.description}</p>
+                      <p className="text-gray-300 mb-4 line-clamp-3">{job.description}</p>
                       <p className="text-sm text-indigo-300 mb-4">Budget: ${job.budget}</p>
                       
                       <div className="border-t border-white/10 pt-4">
@@ -173,8 +188,8 @@ const ClientDashboard = () => {
                                 <button
                                   className={`mt-2 w-full py-1 px-3 rounded-lg text-sm font-medium transition-all ${
                                     proposal.approved
-                                      ? "bg-green-600/30 text-green-300 border border-green-500/50"
-                                      : "bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:shadow-green-500/30 hover:shadow-md"
+                                      ? "bg-green-600/30 text-green-300 border border-green-500/50 cursor-not-allowed"
+                                      : "bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:shadow-green-500/30 hover:shadow-md hover:scale-[1.02]"
                                   }`}
                                   onClick={() => handleApprove(proposal.id)}
                                   disabled={proposal.approved}

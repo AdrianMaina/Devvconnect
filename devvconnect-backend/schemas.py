@@ -25,7 +25,7 @@ class JobBase(BaseModel):
     tech_stack: Optional[str] = None  # Make optional
     timeline: Optional[str] = None    # Make optional
 
-class JobCreate(BaseModel):
+class JobCreate(BaseModel): # User provided this schema
     title: str
     description: str
     budget: float
