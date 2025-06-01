@@ -1,59 +1,76 @@
-import { auth } from "../firebaseConfig"; // Assuming firebaseConfig.js is in the parent directory of api.js
-// If firebaseConfig is elsewhere, adjust the path e.g., import { auth } from "./firebaseConfig";
+// File: devvconnect-frontend/src/api/api.js
+import { auth } from "../firebaseConfig"; // Assuming firebaseConfig.js is in the parent directory
 
-const API_BASE_URL = import.meta.env.VITE_API_URL; // Your API base URL
+export const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+if (!API_BASE_URL) {
+  console.error(
+    "VITE_API_URL is not set! Frontend API calls will likely fail. " +
+    "For local development, create a .env file in the frontend root with VITE_API_URL=http://localhost:8000. " +
+    "For Vercel, set this in project environment variables."
+  );
+}
 
 // Helper to get Firebase token for current user
 async function getToken() {
   const currentUser = auth.currentUser;
-  if (!currentUser) throw new Error("No logged in user");
-  return await currentUser.getIdToken();
+  if (!currentUser) {
+    console.error("getToken: No logged in user found by Firebase auth.currentUser.");
+    throw new Error("No logged in user");
+  }
+  try {
+    return await currentUser.getIdToken(true); // Force refresh token
+  } catch (error) {
+    console.error("getToken: Error getting ID token:", error);
+    // If token refresh fails (e.g. user signed out, account deleted), sign out user locally
+    // This depends on how you manage global auth state (e.g. React Context)
+    // For now, just re-throw. Consider global sign-out logic here.
+    throw new Error("Failed to get authentication token. User might need to sign in again.");
+  }
 }
 
-// Save a user to backend
-export async function saveUserToBackend(user) {
+// Save a user to backend (used for both client and freelancer signup)
+export async function saveUserToBackend(userData) {
   const token = await getToken();
 
-  const res = await fetch(`${API_BASE_URL}/users`, { // Assuming /users is the correct endpoint from your users.py
+  const res = await fetch(`${API_BASE_URL}/users`, { // Endpoint for creating users
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(user),
+    body: JSON.stringify(userData), // userData should include firebase_uid, name, email, role
   });
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ detail: "Failed to save user to backend" }));
+    const errorData = await res.json().catch(() => ({ detail: "Failed to save user to backend (non-JSON or network error)" }));
     console.error("Failed to save user to backend:", errorData);
     throw new Error(errorData.detail || "Failed to save user to backend");
   }
   return await res.json();
 }
 
-// Fetch logged-in user data from backend
+// Fetch logged-in user data from backend (typically /users/me)
 export async function fetchCurrentUser() {
   const token = await getToken();
 
-  const res = await fetch(`${API_BASE_URL}/users/me`, { // Assuming /users/me from your auth.py or users.py
+  const res = await fetch(`${API_BASE_URL}/users/me`, { 
     headers: {
       Authorization: `Bearer ${token}`,
     },
   });
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ detail: "Failed to fetch user from backend" }));
-    console.error("Failed to fetch user from backend:", errorData);
-    throw new Error(errorData.detail || "Failed to fetch user from backend");
+    const errorData = await res.json().catch(() => ({ detail: "Failed to fetch current user from backend (non-JSON or network error)" }));
+    console.error("Failed to fetch current user from backend:", errorData);
+    throw new Error(errorData.detail || "Failed to fetch current user from backend");
   }
   return await res.json();
 }
 
-// Fetch all jobs for Browse (freelancer) - CORRECTED ENDPOINT
+// Fetch all jobs for Browse (freelancer)
 export async function getJobs() {
   const token = await getToken();
-
-  // *** MODIFIED LINE: Changed from /jobs to /freelancer/jobs ***
   const res = await fetch(`${API_BASE_URL}/freelancer/jobs`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -71,7 +88,7 @@ export async function getJobs() {
 // Client: Post a new job
 export async function postJob(jobData) {
   const token = await getToken();
-  const response = await fetch(`${API_BASE_URL}/client/jobs`, { // Uses client-specific endpoint
+  const response = await fetch(`${API_BASE_URL}/client/jobs`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -85,14 +102,12 @@ export async function postJob(jobData) {
     console.error("Failed to post job:", errorData);
     throw new Error(errorData.detail || "Failed to post job");
   }
-
   return response.json();
 }
 
 // Client: get jobs posted by the current client
 export async function getClientJobs() {
   const token = await getToken();
-
   const res = await fetch(`${API_BASE_URL}/client/jobs`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -110,7 +125,6 @@ export async function getClientJobs() {
 // Client: approve a freelancer proposal
 export async function approveProposal(proposalId) {
   const token = await getToken();
-
   const res = await fetch(`${API_BASE_URL}/client/proposals/${proposalId}/approve`, {
     method: "POST",
     headers: {
@@ -129,7 +143,6 @@ export async function approveProposal(proposalId) {
 // Client: fetch their jobs with proposals
 export async function fetchMyJobsWithProposals() {
   const token = await getToken();
-
   const res = await fetch(`${API_BASE_URL}/client/jobs-with-proposals`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -144,16 +157,15 @@ export async function fetchMyJobsWithProposals() {
 }
 
 // Freelancer: Submit a proposal for a job
-export async function submitProposal(jobId, proposalData = {}) { // proposalData can be extended if needed
+export async function submitProposal(jobId, proposalData = {}) {
   const token = await getToken();
-  const res = await fetch(`${API_BASE_URL}/freelancer/apply/${jobId}`, { // Assuming /freelancer/apply/{job_id} from freelancer.py
+  const res = await fetch(`${API_BASE_URL}/freelancer/apply/${jobId}`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json", // Ensure backend expects JSON if you send a body
+      "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    // body: JSON.stringify(proposalData), // Add if your apply endpoint expects a body (e.g., cover letter)
-                                         // The current freelancer.py apply_to_job doesn't expect a body, proposal is created with default values
+    // body: JSON.stringify(proposalData), // Only if your backend endpoint expects a body
   });
 
   if (!res.ok) {
@@ -167,7 +179,7 @@ export async function submitProposal(jobId, proposalData = {}) { // proposalData
 // Freelancer: Get jobs they have been approved for
 export async function getApprovedJobs() {
   const token = await getToken();
-  const res = await fetch(`${API_BASE_URL}/freelancer/approved-jobs`, { // Assuming /freelancer/approved-jobs from freelancer.py
+  const res = await fetch(`${API_BASE_URL}/freelancer/approved-jobs`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -179,20 +191,3 @@ export async function getApprovedJobs() {
   }
   return await res.json();
 }
-
-const getIdToken = async () => {
-  const user = auth.currentUser;
-  if (user) {
-    try {
-      console.log("Attempting to get ID token for user:", user.email);
-      const token = await user.getIdToken(true); // Force refresh
-      console.log("Successfully retrieved ID token:", token);
-      return token;
-    } catch (error) {
-      console.error("Error getting/refreshing ID token from Firebase:", error);
-      throw error; // Re-throw the error to be caught by the calling function
-    }
-  }
-  console.error("getIdToken: No user logged in");
-  throw new Error("No user logged in");
-};

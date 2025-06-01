@@ -1,8 +1,10 @@
+// File: devvconnect-frontend/src/pages/Login.jsx
 import React, { useState } from "react";
-import { signInWithEmailAndPassword, getIdToken } from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth"; // getIdToken is not directly needed here
 import { useNavigate } from "react-router-dom";
 import { auth } from "../firebaseConfig";
 import BackButton from "../components/BackButton";
+import { fetchCurrentUser } from "../api/api"; // Import the centralized API function
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,145 +16,111 @@ export default function Login() {
     e.preventDefault();
     setError("");
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      const idToken = await getIdToken(user);
+      // Step 1: Sign in with Firebase
+      await signInWithEmailAndPassword(auth, email, password);
+      
+      // Step 2: Firebase auth state changes, auth.currentUser will be set.
+      // getToken() inside fetchCurrentUser() will now work.
+      // Fetch user details (including role) from your backend
+      const backendUserData = await fetchCurrentUser();
 
-      // Fetch user data from backend
-      const response = await fetch(`http://localhost:8000/users/${user.uid}`, {
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || "User fetch failed");
-      }
-
-      const userData = await response.json();
-
-      // Redirect based on role
-      if (userData.role === "freelancer") {
+      // Step 3: Redirect based on role from your backend
+      if (backendUserData.role === "freelancer") {
         navigate("/freelancer-dashboard");
-      } else if (userData.role === "client") {
+      } else if (backendUserData.role === "client") {
         navigate("/client-dashboard");
       } else {
-        throw new Error("Unknown user role");
+        // Fallback or error if role is not what's expected
+        console.error("Unknown user role from backend:", backendUserData.role);
+        setError("Login successful, but could not determine user role for redirection.");
+        // Potentially navigate to a generic dashboard or show an error
       }
     } catch (err) {
-      setError("Login failed: " + err.message);
+      console.error("Login error details:", err);
+      // Provide more user-friendly messages for common Firebase auth errors
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setError("Invalid email or password. Please try again.");
+      } else if (err.message.includes("Failed to fetch current user from backend")){
+        setError("Login successful but failed to fetch user details from our server. Please try again shortly.");
+      } else {
+        setError(`Login failed: ${err.message || "An unexpected error occurred."}`);
+      }
     }
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Animated background */}
-      <div className="absolute inset-0">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full opacity-10 blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full opacity-10 blur-3xl animate-pulse delay-1000"></div>
-      </div>
-
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
-        <div className="w-full max-w-md">
-          {/* Back button with enhanced styling */}
-          <div className="mb-6">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-gray-900 to-zinc-900 flex items-center justify-center p-4">
+      {/* Background elements (unchanged) */}
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-md"></div>
+      <div className="absolute top-0 left-0 w-1/3 h-1/3 bg-purple-700/20 rounded-full filter blur-3xl animate-pulse-slowest"></div>
+      <div className="absolute bottom-0 right-0 w-1/3 h-1/3 bg-pink-700/20 rounded-full filter blur-3xl animate-pulse-slower-alt"></div>
+      
+      <div className="relative z-10 w-full max-w-md">
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur-md opacity-50"></div>
+        <div className="relative bg-slate-900/80 backdrop-blur-lg p-8 rounded-2xl shadow-2xl border border-slate-700">
+          <div className="flex justify-start mb-6">
             <BackButton />
           </div>
+          <h2 className="text-4xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-8">
+            Welcome Back
+          </h2>
 
-          {/* Main login card with glassmorphism */}
-          <div className="bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl p-8 relative overflow-hidden">
-            {/* Subtle gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-3xl"></div>
-            
-            <div className="relative z-10">
-              {/* Header */}
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl mb-4 shadow-lg">
-                  <span className="text-2xl">🔐</span>
-                </div>
-                <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-                <p className="text-gray-300">Sign in to your DevvConnect account</p>
-              </div>
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1" htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1" htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                required
+              />
+            </div>
 
-              <form onSubmit={handleLogin} className="space-y-6">
-                {/* Email field */}
-                <div className="space-y-2">
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-200">
-                    Email address
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-400">📧</span>
-                    </div>
-                    <input
-                      id="email"
-                      type="email"
-                      required
-                      className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent backdrop-blur-sm transition-all duration-200"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Password field */}
-                <div className="space-y-2">
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-200">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-400">🔒</span>
-                    </div>
-                    <input
-                      id="password"
-                      type="password"
-                      required
-                      className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent backdrop-blur-sm transition-all duration-200"
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Error message */}
-                {error && (
-                  <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl">
-                    <p className="text-red-300 text-sm flex items-center gap-2">
-                      <span>⚠️</span>
-                      {error}
-                    </p>
-                  </div>
-                )}
-
-                {/* Submit button */}
-                <button
-                  type="submit"
-                  className="w-full relative group bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl text-lg font-semibold shadow-xl hover:shadow-purple-600/25 transition-all duration-300 hover:scale-[1.02] transform"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity"></div>
-                  <span className="relative flex items-center justify-center gap-2">
-                    ✨ Sign In
-                  </span>
-                </button>
-              </form>
-
-              {/* Footer */}
-              <div className="mt-8 text-center">
-                <p className="text-gray-400 text-sm">
-                  Don't have an account?{" "}
-                  <button
-                    onClick={() => navigate("/")}
-                    className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
-                  >
-                    Sign up here
-                  </button>
+            {error && (
+              <div className="my-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-center">
+                <p className="text-red-300 text-sm flex items-center justify-center gap-2">
+                  <span>⚠️</span>
+                  {error}
                 </p>
               </div>
-            </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full relative group bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl text-lg font-semibold shadow-xl hover:shadow-purple-600/25 transition-all duration-300 hover:scale-[1.02] transform"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity"></div>
+              <span className="relative flex items-center justify-center gap-2">
+                ✨ Sign In
+              </span>
+            </button>
+          </form>
+
+          <div className="mt-8 text-center">
+            <p className="text-gray-400 text-sm">
+              Don't have an account?{" "}
+              <button
+                onClick={() => navigate("/")} // Assuming '/' is your main signup options page or hero page
+                className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
+              >
+                Sign up here
+              </button>
+            </p>
           </div>
         </div>
       </div>
