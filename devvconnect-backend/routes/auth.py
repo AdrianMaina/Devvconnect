@@ -20,6 +20,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token") # Path for token generati
 # Your actual implementation might vary based on how firebase_auth.py is structured.
 # Ensure that firebase_admin.initialize_app() has been called once (e.g., in firebase_auth.py or main.py)
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+
+    print(f"====== एंटर्ड get_current_user with token (first 20 chars if token exists): {token[:20] if token and isinstance(token, str) else 'TOKEN NOT STRING OR NONE'} ======")
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
